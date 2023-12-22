@@ -84,6 +84,7 @@ def add_project():
 def on_closing():
     if running:
         stop_timer()
+    save_projects()
     root.destroy()
 
 root = tk.Tk()
