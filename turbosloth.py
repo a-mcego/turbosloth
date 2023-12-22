@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import simpledialog
+from tkinter import simpledialog, messagebox
 import csv
 from datetime import datetime
+import os
 
 def start_timer():
     global start_time, running
@@ -39,9 +40,46 @@ def update_status(message):
 def log_time(timetype, duration, name, extra=""):
     timevalue = datetime.now()
     timestamp = datetime.now().timestamp()
-    with open('timer_log.csv', 'a', newline='') as file:
+    project = project_var.get()
+    if project:
+        filename = f'{project}.timer.csv'
+        with open(filename, 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([timetype, timevalue, timestamp, duration, name, extra])
+
+def load_projects():
+    global projects
+    try:
+        projects = []
+        with open('projects.csv', 'r', newline='') as file:
+            reader = csv.reader(file)
+            project_menu['menu'].delete(0)
+            for row in reader:
+                project_name = row[0]
+                projects.append(project_name)
+                project_menu['menu'].add_command(label=project_name, command=tk._setit(project_var, project_name))
+    except FileNotFoundError:
+        # If the file doesn't exist, create it.
+        with open('projects.csv', 'w', newline='') as file:
+            pass
+
+def save_projects():
+    with open('projects.csv', 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow([timetype, timevalue, timestamp, duration, name, extra])
+        for project in projects:
+            writer.writerow([project])
+
+def add_project():
+    global projects
+    project_name = simpledialog.askstring("New Project", "Enter the name of the new project:")
+    if project_name:
+        if project_name in projects:
+            messagebox.showerror("Error", "Project already exists.")
+        else:
+            projects.append(project_name)
+            project_var.set(project_name)
+            project_menu['menu'].add_command(label=project_name, command=tk._setit(project_var, project_name))
+            save_projects()
 
 def on_closing():
     if running:
@@ -53,13 +91,22 @@ root.title("TurboSloth")
 
 running = False
 start_time = None
+projects = ['']
 
 button_frame = tk.Frame(root)
 start_button = tk.Button(button_frame, text="Start", command=start_timer, font=("", 48))
 stop_button = tk.Button(button_frame, text="Stop", command=stop_timer, font=("", 48))
 entry_name = tk.Entry(root, state=tk.NORMAL, font=("", 48), justify='center')
-timer_label = tk.Label(root, text="00:00:00", font=("Helvetica", 48))
-status_label = tk.Label(root, text="Ready")
+timer_label = tk.Label(root, text="00:00:00", font=("", 48))
+status_label = tk.Label(root, text="Ready", font=("", 48))
+
+project_var = tk.StringVar(root)
+project_menu = tk.OptionMenu(root, project_var, *projects)
+project_menu.config(font=("", 24))
+add_project_button = tk.Button(root, text="Add Project", command=add_project, font=("", 24))
+
+
+load_projects()
 
 start_button.pack(side=tk.LEFT)
 stop_button.pack(side=tk.LEFT)
@@ -67,6 +114,8 @@ button_frame.pack()
 entry_name.pack()
 timer_label.pack()
 status_label.pack()
+project_menu.pack()
+add_project_button.pack()
 
 root.wm_protocol("WM_DELETE_WINDOW", on_closing)
 root.mainloop()
