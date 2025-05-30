@@ -4,8 +4,24 @@ import csv
 from datetime import datetime
 import os
 
+def load_tasks():
+    global project_tasks
+    try:
+        import json
+        with open('tasks.json', 'r') as file:
+            project_tasks = json.load(file)
+    except FileNotFoundError:
+        project_tasks = {}
+
+def save_tasks():
+    import json
+    global project_tasks
+    with open('tasks.json', 'w') as file:
+        json.dump(project_tasks, file)
+
 def start_timer():
     global start_time, running
+    save_tasks()
     if running:
         stop_timer()
     running = True
@@ -17,6 +33,7 @@ def start_timer():
 
 def stop_timer():
     global running
+    save_tasks()
     if not running:
         start_timer()
     running = False
@@ -81,10 +98,26 @@ def add_project():
             project_menu['menu'].add_command(label=project_name, command=tk._setit(project_var, project_name))
             save_projects()
 
+def on_project_change(*args):
+    global project_tasks
+    current_project = project_var.get()
+    if current_project:
+        entry_name.delete(0, tk.END)
+        if current_project in project_tasks:
+            entry_name.insert(0, project_tasks[current_project])
+
+def on_task_change(*args):
+    global project_tasks
+    current_project = project_var.get()
+    current_task = entry_name.get()
+    if current_project:
+        project_tasks[current_project] = current_task
+
 def on_closing():
     if running:
         stop_timer()
     save_projects()
+    save_tasks()
     root.destroy()
 
 root = tk.Tk()
@@ -93,21 +126,25 @@ root.title("TurboSloth")
 running = False
 start_time = None
 projects = ['']
+project_tasks = {}
 
 button_frame = tk.Frame(root)
 start_button = tk.Button(button_frame, text="Start", command=start_timer, font=("", 48))
 stop_button = tk.Button(button_frame, text="Stop", command=stop_timer, font=("", 48))
 entry_name = tk.Entry(root, state=tk.NORMAL, font=("", 48), justify='center')
+entry_name.bind('<KeyRelease>', on_task_change)
 timer_label = tk.Label(root, text="00:00:00", font=("", 48))
 status_label = tk.Label(root, text="Ready", font=("", 48))
 
 project_var = tk.StringVar(root)
+project_var.trace('w', on_project_change)
 project_menu = tk.OptionMenu(root, project_var, *projects)
 project_menu.config(font=("", 24))
 add_project_button = tk.Button(root, text="Add Project", command=add_project, font=("", 24))
 
 
 load_projects()
+load_tasks()
 
 start_button.pack(side=tk.LEFT)
 stop_button.pack(side=tk.LEFT)
